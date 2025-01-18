@@ -1,0 +1,9 @@
+# clashroyale/services/config.py
+
+API_BASE_URL = "https://api.clashroyale.com/v1"
+API_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjI5NmM2NjQ0LTlhZmItNGRjYS04ZGNiLTNlYzVhYzdhZGRlMiIsImlhdCI6MTczNzE5ODc3Mywic3ViIjoiZGV2ZWxvcGVyL2UyZjg3ZjgxLTBmOTktZTBhZS1kODlkLTU0MDZkZWFhNzZhMSIsInNjb3BlcyI6WyJyb3lhbGUiXSwibGltaXRzIjpbeyJ0aWVyIjoiZGV2ZWxvcGVyL3NpbHZlciIsInR5cGUiOiJ0aHJvdHRsaW5nIn0seyJjaWRycyI6WyIxMDEuMC42Mi4xNDAiXSwidHlwZSI6ImNsaWVudCJ9XX0.5AeMxFVkXrP8Do0JpaN9UEAdwYQjrsS2Qnf23xVftSYdC0Pynr8JtFbOTu60ct5L6_J3HAqCXx35nm7wHWIV_w"
+
+HEADERS = {
+    "Authorization": f"Bearer {API_TOKEN}",
+    "Accept": "application/json",
+}
