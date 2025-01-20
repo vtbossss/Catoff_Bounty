@@ -1,8 +1,9 @@
 from django.core.management.base import BaseCommand
 from clashroyale.services.api_client import make_request
-from clashroyale.models import Player, Clan, Leaderboard, Challenge, BattleLog, GameMode, Prize
-
+from clashroyale.models import Player, Clan, Challenge, BattleLog, GameMode, Prize
+from clashroyale.services.verification import TrophyVerification, ChallengeVerification, WinLossVerification
 import urllib.parse
+
 
 class Command(BaseCommand):
     help = "Fetch and store Clash Royale data for player stats, challenges, and real-time wagering"
@@ -33,7 +34,7 @@ class Command(BaseCommand):
             players_data = make_request(f"/players/{encoded_player_tag}")
             self.stdout.write(f"Players Data: {players_data}")
             if "tag" in players_data:
-                Player.objects.update_or_create(
+                player, created = Player.objects.update_or_create(
                     tag=players_data["tag"],
                     defaults={
                         "name": players_data["name"],
@@ -41,6 +42,14 @@ class Command(BaseCommand):
                         "trophies": players_data["trophies"],
                     },
                 )
+
+                # Generate and log Trophy Proof
+                trophy_proof = TrophyVerification.generate_trophy_proof(player_tag, threshold=4000)
+                self.stdout.write(self.style.SUCCESS(f"Trophy proof for {player_tag}: {trophy_proof}"))
+                
+                # Generate and log Win-Loss Proof
+                win_loss_proof = WinLossVerification.generate_win_loss_proof(player_tag, threshold=60.0)
+                self.stdout.write(self.style.SUCCESS(f"Win/Loss proof for {player_tag}: {win_loss_proof}"))
             else:
                 self.stdout.write(self.style.WARNING("No player data found."))
 
@@ -63,18 +72,6 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING("Player is not part of a clan."))
 
-            # 3. Fetch and store data for Leaderboards (replace location ID as required)
-            leaderboard_data = make_request("/locations/global/rankings/players")
-            self.stdout.write(f"Leaderboard Data: {leaderboard_data}")
-            for leaderboard in process_response(leaderboard_data, "Leaderboards"):
-                Leaderboard.objects.update_or_create(
-                    leaderboard_id=leaderboard["tag"],
-                    defaults={
-                        "name": leaderboard["name"],
-                        "clan_score": leaderboard.get("clanScore", 0),
-                        "rank": leaderboard.get("rank", 0),
-                    },
-                )
 
             # 4. Fetch and store data for Challenges
             challenges_data = make_request("/challenges")
@@ -123,10 +120,12 @@ class Command(BaseCommand):
                         action = "Created" if created else "Updated"
                         self.stdout.write(self.style.SUCCESS(f"{action} challenge: {challenge['name']}"))
 
+                        # Generate and log Challenge Proof
+                        challenge_proof = ChallengeVerification.generate_challenge_proof(player_tag, challenge["id"])
+                        self.stdout.write(self.style.SUCCESS(f"Challenge proof for {player_tag} in challenge {challenge['name']}: {challenge_proof}"))
+
                     except Exception as e:
                         self.stdout.write(self.style.ERROR(f"Error processing challenge: {str(e)}"))
-
-
 
             # 5. Fetch and store data for Battle Logs
             battle_log_data = make_request(f"/players/{encoded_player_tag}/battlelog")
