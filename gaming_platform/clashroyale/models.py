@@ -1,5 +1,66 @@
 from django.db import models
 
+
+# Documentation: The GameMode model stores details about different game modes in Clash Royale.
+class GameMode(models.Model):
+    id = models.CharField(max_length=50, unique=True, primary_key=True)  # Game mode ID
+    name = models.CharField(max_length=100)  # Game mode name
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Game Mode"
+        verbose_name_plural = "Game Modes"
+
+
+# Documentation: The Prize model stores information about prizes for a specific challenge.
+class Prize(models.Model):
+    type = models.CharField(max_length=50, blank=True, null=True)  # Prize type (e.g., "consumable")
+    amount = models.PositiveIntegerField(blank=True, null=True)  # Prize amount
+    consumable_name = models.CharField(max_length=100, blank=True, null=True)  # Name of the consumable prize
+    challenge = models.ForeignKey(
+        "Challenge", on_delete=models.CASCADE, related_name="prizes"
+    )  # Associated challenge
+
+    def __str__(self):
+        if self.type and self.amount:
+            return f"{self.amount}x {self.consumable_name or self.type}"
+        return "No Prize"
+
+    class Meta:
+        verbose_name = "Prize"
+        verbose_name_plural = "Prizes"
+
+
+# Documentation: The Challenge model stores information about in-game challenges.
+class Challenge(models.Model):
+    id = models.CharField(max_length=50, unique=True, primary_key=True)  # Unique challenge ID
+    name = models.CharField(max_length=100)  # Challenge name
+    description = models.TextField(blank=True, null=True)  # Challenge description
+    start_time = models.DateTimeField(null=True, blank=True)  # Start time of the challenge
+    end_time = models.DateTimeField(null=True, blank=True)  # End time of the challenge
+    win_mode = models.CharField(max_length=50, blank=True, null=True)  # Win condition
+    casual = models.BooleanField(default=False)  # Whether the challenge is casual
+    max_losses = models.PositiveIntegerField()  # Maximum allowed losses
+    max_wins = models.PositiveIntegerField()  # Maximum allowed wins
+    game_mode = models.ForeignKey(
+        GameMode, on_delete=models.SET_NULL, null=True, related_name="challenges"
+    )  # Associated game mode
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="sub_challenges"
+    )  # Nested challenges (if any)
+    icon_url = models.URLField(blank=True, null=True)  # URL for the challenge icon
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Challenge"
+        verbose_name_plural = "Challenges"
+        ordering = ["-start_time"]
+
+
 # Documentation: The Player model stores information about Clash Royale players.
 class Player(models.Model):
     tag = models.CharField(max_length=50, unique=True)  # Unique identifier for the player
@@ -47,46 +108,22 @@ class Leaderboard(models.Model):
         verbose_name_plural = "Leaderboards"
 
 
-# Documentation: The Challenge model stores information about in-game challenges.
-class Challenge(models.Model):
-    challenge_id = models.CharField(max_length=50, unique=True)  # Unique identifier for the challenge
-    name = models.CharField(max_length=100)  # Title of the challenge
-    max_wins = models.PositiveIntegerField()  # Maximum wins in the challenge
-    reward = models.CharField(max_length=100, blank=True, null=True)  # Reward details (if any)
-
-    def __str__(self):
-        return f"Challenge: {self.name} ({self.max_wins} Max Wins)"
-
-    class Meta:
-        verbose_name = "Challenge"
-        verbose_name_plural = "Challenges"
-
-
 # Documentation: The BattleLog model stores details of a player's battle history.
 class BattleLog(models.Model):
-    battle_id = models.CharField(max_length=50, unique=True)  # Unique identifier for the battle
-    type = models.CharField(max_length=50)  # Type of battle (e.g., 1v1, 2v2)
+    battle_id = models.CharField(max_length=255, unique=True)  # Unique battle ID
+    type = models.CharField(max_length=50)  # Type of battle
     timestamp = models.DateTimeField()  # Timestamp of the battle
-    opponent_name = models.CharField(max_length=100)  # Opponent's name in the battle
+    arena = models.CharField(max_length=100, default="Unknown Arena")  # Arena where the battle took place
+    game_mode = models.CharField(max_length=100, default="Unknown Mode")  # Game mode used in the battle
+    player_tag = models.CharField(max_length=255)  # Player's tag
+    player_name = models.CharField(max_length=255)  # Player's name
+    starting_trophies = models.IntegerField(default=0)  # Starting trophies before the battle
+    trophy_change = models.IntegerField(default=0)  # Change in trophies after the battle
+    crowns = models.IntegerField(default=0)  # Number of crowns earned
+    king_tower_hp = models.IntegerField(default=0)  # King's tower remaining HP
+    princess_tower_hp = models.JSONField(null=True, blank=True)  # HP of princess towers (as a list)
 
     def __str__(self):
-        return f"Battle: {self.type} vs {self.opponent_name} on {self.timestamp}"
-
-    class Meta:
-        verbose_name = "Battle Log"
-        verbose_name_plural = "Battle Logs"
+        return f"{self.player_name} battle log at {self.timestamp}"
 
 
-# Documentation: The ClanWar model stores information about clan wars.
-class ClanWar(models.Model):
-    war_id = models.CharField(max_length=50, unique=True)  # Unique identifier for the clan war
-    status = models.CharField(max_length=50)  # Status of the war (e.g., "ongoing", "completed")
-    battle_count = models.PositiveIntegerField()  # Total battles in the clan war
-    wins = models.PositiveIntegerField()  # Number of wins in the clan war
-
-    def __str__(self):
-        return f"Clan War: {self.status} (Battles: {self.battle_count}, Wins: {self.wins})"
-
-    class Meta:
-        verbose_name = "Clan War"
-        verbose_name_plural = "Clan Wars"

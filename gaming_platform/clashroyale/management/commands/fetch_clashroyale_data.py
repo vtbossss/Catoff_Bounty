@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from clashroyale.services.api_client import make_request
-from clashroyale.models import Player, Clan, Leaderboard, Challenge, BattleLog, ClanWar
+from clashroyale.models import Player, Clan, Leaderboard, Challenge, BattleLog, GameMode, Prize
+
 import urllib.parse
 
 class Command(BaseCommand):
@@ -78,49 +79,99 @@ class Command(BaseCommand):
             # 4. Fetch and store data for Challenges
             challenges_data = make_request("/challenges")
             self.stdout.write(f"Challenges Data: {challenges_data}")
-            for challenge in process_response(challenges_data, "Challenges"):
-                Challenge.objects.update_or_create(
-                    challenge_id=challenge["id"],
-                    defaults={
-                        "name": challenge["title"],
-                        "max_wins": challenge.get("maxWins", 0),
-                        "reward": challenge.get("reward", ""),
-                    },
-                )
+
+            if not isinstance(challenges_data, list):
+                self.stdout.write(self.style.WARNING("Challenges data is not in the expected format."))
+                challenges_data = []
+
+            for challenge_set in challenges_data:
+                challenges = challenge_set.get("challenges", [])
+                for challenge in challenges:
+                    try:
+                        # Process game mode
+                        game_mode_data = challenge.get("gameMode", {})
+                        game_mode, _ = GameMode.objects.get_or_create(
+                            id=game_mode_data.get("id"),
+                            defaults={"name": game_mode_data.get("name", "Unknown")},
+                        )
+
+                        # Process challenge
+                        challenge_obj, created = Challenge.objects.update_or_create(
+                            id=challenge["id"],  # Use 'id' instead of 'challenge_id'
+                            defaults={
+                                "name": challenge["name"],
+                                "description": challenge.get("description", ""),
+                                "win_mode": challenge.get("winMode", ""),
+                                "casual": challenge.get("casual", False),
+                                "max_losses": challenge.get("maxLosses", 0),
+                                "max_wins": challenge.get("maxWins", 0),
+                                "icon_url": challenge.get("iconUrl", ""),
+                                "game_mode": game_mode,
+                            },
+                        )
+
+                        # Process prizes
+                        challenge_obj.prizes.all().delete()  # Clear old prizes to avoid duplicates
+                        for prize in challenge.get("prizes", []):
+                            Prize.objects.create(
+                                challenge=challenge_obj,
+                                type=prize.get("type"),
+                                amount=prize.get("amount"),
+                                consumable_name=prize.get("consumableName"),
+                            )
+
+                        action = "Created" if created else "Updated"
+                        self.stdout.write(self.style.SUCCESS(f"{action} challenge: {challenge['name']}"))
+
+                    except Exception as e:
+                        self.stdout.write(self.style.ERROR(f"Error processing challenge: {str(e)}"))
+
+
 
             # 5. Fetch and store data for Battle Logs
             battle_log_data = make_request(f"/players/{encoded_player_tag}/battlelog")
             self.stdout.write(f"Battle Log Data: {battle_log_data}")
-            for battle in process_response(battle_log_data, "Battle Log"):
-                BattleLog.objects.update_or_create(
-                    battle_id=battle["battleTime"],
-                    defaults={
-                        "type": battle["type"],
-                        "timestamp": battle["battleTime"],
-                        "opponent_name": battle.get("opponent", {}).get("name", "Unknown"),
-                    },
-                )
 
-            # 6. Fetch and store data for Clan War (if player is in a clan)
-            if clan_tag:
-                try:
-                    clan_war_data = make_request(f"/clans/{encoded_clan_tag}/currentwar")
-                    if "error" in clan_war_data and clan_war_data["error"] == "410":
-                        self.stdout.write(self.style.WARNING("Clan is not currently in a war."))
-                    else:
-                        self.stdout.write(f"Clan War Data: {clan_war_data}")
-                        ClanWar.objects.update_or_create(
-                            war_id=clan_war_data["clan"]["tag"],
+            if isinstance(battle_log_data, list) and battle_log_data:
+                for battle in battle_log_data[:50]:  # Limiting to the top 50 battles
+                    # Extract necessary fields from the battle data
+                    battle_type = battle.get("type", "Unknown")
+                    battle_time = battle.get("battleTime", "")
+                    arena_name = battle.get("arena", {}).get("name", "Unknown Arena")
+                    game_mode_name = battle.get("gameMode", {}).get("name", "Unknown Mode")
+                    team = battle.get("team", [])
+                    
+                    # Process the team data (assuming the team has only one player, the current player)
+                    if team:
+                        player_data = team[0]  # The first team member (your player)
+                        player_tag = player_data.get("tag", "")
+                        player_name = player_data.get("name", "Unknown")
+                        trophy_change = player_data.get("trophyChange", 0)
+                        crowns = player_data.get("crowns", 0)
+                        king_tower_hp = player_data.get("kingTowerHitPoints", 0)
+                        princess_tower_hp = player_data.get("princessTowersHitPoints", [0, 0])
+
+                        # Create or update the BattleLog entry in the database
+                        BattleLog.objects.update_or_create(
+                            battle_id=battle_time,  # Use the battle time as a unique identifier
                             defaults={
-                                "status": clan_war_data["state"],
-                                "battle_count": clan_war_data.get("battlesPlayed", 0),
-                                "wins": clan_war_data.get("wins", 0),
+                                "type": battle_type,
+                                "timestamp": battle_time,
+                                "arena": arena_name,
+                                "game_mode": game_mode_name,
+                                "player_tag": player_tag,
+                                "player_name": player_name,
+                                "starting_trophies": player_data.get("startingTrophies", 0),
+                                "trophy_change": trophy_change,
+                                "crowns": crowns,
+                                "king_tower_hp": king_tower_hp,
+                                "princess_tower_hp": princess_tower_hp,
                             },
                         )
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f"Error fetching Clan War data: {str(e)}"))
+                    else:
+                        self.stdout.write(self.style.WARNING(f"No team data for battle: {battle_time}"))
             else:
-                self.stdout.write(self.style.WARNING("Clan war data cannot be fetched as player is not in a clan."))
+                self.stdout.write(self.style.WARNING("No valid battle log data found."))
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"An error occurred: {str(e)}"))
