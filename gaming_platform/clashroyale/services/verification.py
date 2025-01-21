@@ -125,7 +125,7 @@ class WinLossVerification:
         return {
             "proof": win_loss_ratio > threshold,
             "commitment": commitment,
-            "message": f"Win-loss ratio of {win_loss_ratio:.2f}% is {'above' if win_loss_ratio > threshold else 'below'} the threshold of {threshold}%.",
+            "message": f"Win-loss ratio is {'above' if win_loss_ratio > threshold else 'below'} the threshold of {threshold}%.",
         }
 
     @staticmethod

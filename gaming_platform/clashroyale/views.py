@@ -50,11 +50,19 @@ def player_stats_view(request):
     try:
         # 1. Fetch and store player data
         player_data = make_request(f"/players/{encoded_player_tag}")
-        if not player_data:
-            logger.warning(f"Player data not found for tag: {player_tag}")
+        logger.info(f"Fetched player data: {player_data}")  # Log the player data to verify the response
+
+        if not isinstance(player_data, dict) or not player_data:
+            logger.warning(f"Player data not found or invalid for tag: {player_tag}")
             return render(request, "player_search.html", {"error": "Player not found! Please check the tag."})
 
-        # Store player data in the database (similar to the command)
+        # Log specific attributes to confirm they're available
+        logger.info(f"Player Tag: {player_data.get('tag')}")
+        logger.info(f"Player Name: {player_data.get('name')}")
+        logger.info(f"Player Trophies: {player_data.get('trophies')}")
+        logger.info(f"Player Experience Level: {player_data.get('expLevel')}")
+
+        # Store player data in the database
         player, created = Player.objects.update_or_create(
             tag=player_data["tag"],
             defaults={
@@ -66,36 +74,38 @@ def player_stats_view(request):
 
         # Generate Zero-Knowledge Proofs for the player
         proofs = {
-            "trophy_proof": TrophyVerification.generate_trophy_proof(player_tag, threshold=4000),
+            "trophy_proof": TrophyVerification.generate_trophy_proof(player_tag, threshold=8000),
             "win_loss_proof": WinLossVerification.generate_win_loss_proof(player_tag, threshold=60.0),
         }
         logger.info(f"Generated proofs: {proofs}")
 
         # 2. Fetch and store clan data if the player is part of a clan
-        clan_tag = player_data.get("clan", {}).get("tag")
         clan_data = None
-        if clan_tag:
-            encoded_clan_tag = urllib.parse.quote(clan_tag)
-            clan_data = make_request(f"/clans/{encoded_clan_tag}")
-            if clan_data:
-                Clan.objects.update_or_create(
-                    tag=clan_data["tag"],
-                    defaults={
-                        "name": clan_data["name"],
-                        "description": clan_data.get("description", ""),
-                        "badge_id": clan_data["badgeId"],
-                        "clan_score": clan_data["clanScore"],
-                        "members_count": clan_data["members"],
-                    },
-                )
-                logger.info(f"Clan data stored successfully for clan tag: {clan_tag}")
-            else:
-                logger.warning(f"No clan data found for clan tag: {clan_tag}")
+        if isinstance(player_data.get("clan"), dict):
+            clan_tag = player_data["clan"].get("tag")
+            if clan_tag:
+                encoded_clan_tag = urllib.parse.quote(clan_tag)
+                clan_data = make_request(f"/clans/{encoded_clan_tag}")
+                if isinstance(clan_data, dict) and clan_data:
+                    # If data is found, store or update the clan data
+                    Clan.objects.update_or_create(
+                        tag=clan_data["tag"],
+                        defaults={
+                            "name": clan_data["name"],
+                            "description": clan_data.get("description", ""),
+                            "badge_id": clan_data["badgeId"],
+                            "clan_score": clan_data["clanScore"],
+                            "members_count": clan_data["members"],
+                        },
+                    )
+                    logger.info(f"Clan data stored successfully for clan tag: {clan_tag}")
+                else:
+                    logger.warning(f"No valid clan data found for clan tag: {clan_tag}")
 
         # 3. Fetch and process challenges
         challenges_data = make_request("/challenges")
         challenge_proofs = []
-        if challenges_data:
+        if isinstance(challenges_data, list) and challenges_data:
             for challenge_set in challenges_data:
                 challenges = challenge_set.get("challenges", [])
                 for challenge in challenges:
@@ -163,7 +173,8 @@ def player_stats_view(request):
             "clan": clan_data,  # Add clan data to context
             "proofs": proofs,
             "challenges": challenge_proofs,
-            "battles": battle_log_data[:10],  # Display only top 10 battles
+            "battles": battle_log_data[:10],
+            'exp_level_key': 'expLevel',# Display only top 10 battles
         })
 
     except Exception as e:

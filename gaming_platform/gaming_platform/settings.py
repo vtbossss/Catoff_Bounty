@@ -128,3 +128,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 from decouple import config
 
 CLASH_ROYALE_API_TOKEN = config("CLASH_ROYALE_API_TOKEN")
+
+
+
