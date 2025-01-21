@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Stats for {{ player.name|default:"Unknown Player" }}</title>
+    <style>
+        /* Example CSS to make sure the page looks decent if the external styles aren't loaded */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        section {
+            background-color: white;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .error {
+            color: red;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+        }
+
+        a {
+            color: #ffffff;
+            text-decoration: none;
+            background-color: #4CAF50;
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+
+        a:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Player Stats: {{ player.name|default:"Unknown Player" }}</h1>
+        <a href="{% url 'player_search' %}">Back to Search</a>
+    </header>
+
+    <main>
+        {% if player %}
+        <section>
+            <h2>Player Overview</h2>
+            <p><strong>Tag:</strong> {{ player.tag }}</p>
+            <p><strong>Level:</strong> {{ player.level }}</p>
+            <p><strong>Trophies:</strong> {{ player.trophies }}</p>
+        </section>
+        {% else %}
+        <section>
+            <h2>Player Overview</h2>
+            <p class="error">Player data is unavailable. Please try again.</p>
+        </section>
+        {% endif %}
+
+        {% if proofs %}
+        <section>
+            <h2>Zero-Knowledge Proofs</h2>
+            <p><strong>Trophy Proof:</strong> {{ proofs.trophy_proof|default:"Unavailable" }}</p>
+            <p><strong>Win/Loss Proof:</strong> {{ proofs.win_loss_proof|default:"Unavailable" }}</p>
+        </section>
+        {% endif %}
+
+        {% if clan %}
+        <section>
+            <h2>Clan Overview</h2>
+            <p><strong>Name:</strong> {{ clan.name }}</p>
+            <p><strong>Description:</strong> {{ clan.description|default:"No description available" }}</p>
+            <p><strong>Badge ID:</strong> {{ clan.badge_id }}</p>
+            <p><strong>Clan Score:</strong> {{ clan.clan_score }}</p>
+            <p><strong>Members:</strong> {{ clan.members_count }}</p>
+        </section>
+        {% else %}
+        <section>
+            <h2>Clan Overview</h2>
+            <p class="error">No clan information is available for this player.</p>
+        </section>
+        {% endif %}
+
+        {% if challenges %}
+        <section>
+            <h2>Challenges</h2>
+            <ul>
+                {% for challenge in challenges %}
+                <li>
+                    <strong>{{ challenge.challenge_id }}:</strong> Proof: {{ challenge.proof|default:"No proof available" }}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if battles %}
+        <section>
+            <h2>Recent Battles</h2>
+            <ul>
+                {% for battle in battles %}
+                <li>
+                    <strong>Battle at:</strong> {{ battle.timestamp }} | <strong>Arena:</strong> {{ battle.arena }} | <strong>Game Mode:</strong> {{ battle.game_mode }} | <strong>Trophy Change:</strong> {{ battle.trophy_change }}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% else %}
+        <section>
+            <h2>Recent Battles</h2>
+            <p class="error">No battle logs available for this player.</p>
+        </section>
+        {% endif %}
+
+        {% if error %}
+        <div class="error">
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+    </main>
+
+    <footer>
+        <p>Powered by Django</p>
+    </footer>
+</body>
+</html>
