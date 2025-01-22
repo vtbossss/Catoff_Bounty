@@ -13,7 +13,8 @@ This Django-based project integrates the Clash Royale API to provide a comprehen
 - **Error Handling and Logging**: The application includes robust error handling and detailed logging.
 
 ## Screenshots
-<img width="1680" alt="Screenshot 2025-01-22 at 07 04 52" src="https://github.com/user-attachments/assets/fdc62f0c-cd2e-4d87-8eb1-bf678bfd2a53" />
+<img width="1680" alt="Screenshot 2025-01-22 at 07 05 38" src="https://github.com/user-attachments/assets/72adbfd6-9b76-4d28-af07-8f8d6bfbd7dc" />
+
 
 ### User Interface
 Here are some previews of the UI components:
