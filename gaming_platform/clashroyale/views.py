@@ -181,3 +181,42 @@ def player_stats_view(request):
         # Handle any errors during the process
         logger.error(f"Error occurred while fetching data: {str(e)}")
         return render(request, "player_search.html", {"error": f"An error occurred: {str(e)}"})
+
+
+def challenge_detail_view(request):
+    """
+    View to display a list of ongoing and upcoming challenges with smooth link unfurling.
+    """
+    try:
+        # Fetch all ongoing and upcoming challenges from the API
+        challenges_data = make_request("/challenges")  # API endpoint to fetch challenges
+
+        if not challenges_data or not isinstance(challenges_data, list):
+            logger.warning("No challenges found!")
+            return render(request, "error.html", {"error": "No challenges found!"})
+
+        # Prepare challenges data for context
+        challenges = []
+        for chain in challenges_data:
+            if 'challenges' in chain:
+                for challenge in chain['challenges']:
+                    challenge_name = challenge.get("name", "Unknown Challenge")
+                    challenge_description = challenge.get("description", "No description available.")
+                    challenge_image_url = challenge.get("iconUrl", "default_image_url_here")  # Fix: Use 'iconUrl' from the API
+                    challenge_url = f"https://your-platform.com/challenges/{challenge['id']}"  # Construct challenge URL
+
+                    challenges.append({
+                        "name": challenge_name,
+                        "description": challenge_description,
+                        "image_url": challenge_image_url,
+                        "url": challenge_url
+                    })
+
+        # Pass challenge data to the template for rendering and unfurling
+        return render(request, "challenge_detail.html", {
+            "challenges": challenges
+        })
+
+    except Exception as e:
+        logger.error(f"Error occurred while fetching challenges data: {str(e)}")
+        return render(request, "error.html", {"error": "An error occurred while fetching challenges."})
